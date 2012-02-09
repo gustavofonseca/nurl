@@ -1,5 +1,5 @@
 from .domain import Url
-from .domain import ShortenGenerationError
+from .domain import ShortenGenerationError, NotExists
 
 from pyramid.view import view_config
 from pyramid.response import Response
@@ -35,3 +35,14 @@ def url_shortener(request):
         raise httpexceptions.HTTPInternalServerError()
 
     return Response(short_url)
+
+@view_config(route_name='shortened')
+def short_ref_resolver(request):
+
+    url_handler = Url(request, short_url=request.matchdict['short_ref'])
+    try:
+        plain_url = url_handler.resolve()
+    except NotExists:
+        raise httpexceptions.HTTPNotFound()
+
+    raise httpexceptions.HTTPMovedPermanently(plain_url)
