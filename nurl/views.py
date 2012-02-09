@@ -24,7 +24,11 @@ def url_shortener(request):
     if incoming_url is None:
         raise httpexceptions.HTTPBadRequest()
 
-    url_handler = Url(request, url=incoming_url)
+    try:
+        url_handler = Url(request, url=incoming_url)
+    except ValueError:
+        raise httpexceptions.HTTPBadRequest()
+
     try:
         short_url = url_handler.shorten()
     except ShortenGenerationError:

@@ -29,7 +29,7 @@ class ResourceGenerator(object):
         attempts = 0
         while attempts < 10:
             weak_short_reference = self._generation_tool.genbase(5)
-            url_data = {'plain': url, 'short_ref': 'http://s.cl/{}'.format(weak_short_reference)}
+            url_data = {'plain': url, 'short_ref': weak_short_reference}
             try:
                 self._request.db['urls'].insert(url_data, safe=True)
             except pymongo.errors.DuplicateKeyError:
@@ -63,7 +63,8 @@ class Url(object):
     def shorten(self):
         if self._plain_url is None:
             raise AttributeError('Missing attribute url')
-        return self._resource_generator.generate(self._plain_url)
+        short_ref = self._resource_generator.generate(self._plain_url)
+        return self._request.route_url('shortened', short_ref=short_ref)
 
 
     def resolve(self):

@@ -22,7 +22,7 @@ class DummyResourceGen(object):
         pass
 
     def generate(self, url):
-        return 'http://s.cl/4kgjc'
+        return '4kgjc'
 
     def fetch(self, short_ref):
         return 'http://www.scielo.br'
@@ -79,7 +79,7 @@ class DummyMongoDB_2(object):
                 'find_one', repr(args), repr(kwargs)))
 
         if args[0].has_key('plain'):
-            return {'short_ref': 'http://s.cl/4kgxx',}
+            return {'short_ref': '4kgxx',}
         elif args[0].has_key('short_ref') and args[0]['short_ref'] == 'http://s.cl/4kgxx':
             return {'plain': 'http://www.scielo.br',}
         else:
@@ -93,9 +93,9 @@ class ViewTests(unittest.TestCase):
         testing.tearDown()
 
     def test_my_view(self):
-        from .views import my_view
+        from .views import home
         request = testing.DummyRequest()
-        info = my_view(request)
+        info = home(request)
         self.assertEqual(info['project'], 'nurl')
 
 class DomainTests(unittest.TestCase):
@@ -119,6 +119,7 @@ class DomainTests(unittest.TestCase):
 
     def test_shortening(self):
         request = testing.DummyRequest()
+        request.route_url = lambda *args, **kwargs: 'http://s.cl/4kgjc'
         valid_url = Url(request, url='http://www.scielo.br', resource_gen=DummyResourceGen)
         self.assertEqual(valid_url.shorten(), 'http://s.cl/4kgjc')
 
@@ -128,7 +129,7 @@ class DomainTests(unittest.TestCase):
 
         resource_gen = ResourceGenerator(request, generation_tool=DummyBase28)
         url = 'http://www.scielo.br'
-        self.assertEqual(resource_gen.generate(url), 'http://s.cl/4kgjc')
+        self.assertEqual(resource_gen.generate(url), '4kgjc')
 
     def test_resource_generation_existing(self):
         request = testing.DummyRequest()
@@ -136,7 +137,7 @@ class DomainTests(unittest.TestCase):
 
         resource_gen = ResourceGenerator(request, generation_tool=DummyBase28)
         url = 'http://www.scielo.br'
-        self.assertEqual(resource_gen.generate(url), 'http://s.cl/4kgxx')
+        self.assertEqual(resource_gen.generate(url), '4kgxx')
 
     def test_resource_generation_fetch_short_refs(self):
         request = testing.DummyRequest()
