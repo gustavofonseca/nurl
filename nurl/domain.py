@@ -29,14 +29,14 @@ class ResourceGenerator(object):
         attempts = 0
         while attempts < 10:
             weak_short_reference = self._generation_tool.genbase(5)
-            url_data = {'plain': url, 'short_ref': weak_short_reference}
+            url_data = {'plain': url, 'short_ref': 'http://s.cl/{}'.format(weak_short_reference)}
             try:
                 self._request.db['urls'].insert(url_data, safe=True)
             except pymongo.errors.DuplicateKeyError:
                 attempts += 1
                 continue
             else:
-                return 'http://s.cl/{}'.format(url_data['short_ref'])
+                return url_data['short_ref']
 
         raise ShortenGenerationError()
 
