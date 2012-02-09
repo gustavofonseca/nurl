@@ -1,9 +1,21 @@
 import unittest
+import logging
 
 from pyramid import testing
 
 from .domain import Url
 from .domain import ResourceGenerator
+
+ENABLE_LOGGING = False
+logging.basicConfig(filename='nurl.log', level=logging.INFO, format='%(asctime)s %(levelname)s: %(message)s')
+
+def log_messages(func):
+    def decorated(*args, **kwargs):
+        if ENABLE_LOGGING:
+            logging.info('{0} -> args: {1}, kwargs: {2}'.format(
+                func.__name__, repr(args), repr(kwargs)))
+        func(*args, **kwargs)
+    return decorated
 
 class DummyResourceGen(object):
     def __init__(self, request):
@@ -11,6 +23,9 @@ class DummyResourceGen(object):
 
     def generate(self, url):
         return 'http://s.cl/4kgjc'
+
+    def fetch(self, short_ref):
+        return 'http://www.scielo.br'
 
 class DummyBase28(object):
     @staticmethod
@@ -21,11 +36,54 @@ class DummyMongoDB(object):
     def __getitem__(self, key):
         return self
 
+    @log_messages
     def ensure_index(self, *args, **kwargs):
         return self
 
+    @log_messages
     def insert(self, *args, **kwargs):
         return self
+
+    @log_messages
+    def find_one(self, *args, **kwargs):
+        """
+        This function will be added to a DummyMongoDB
+        instance via monkey patch.
+        """
+        return None
+
+class DummyMongoDB_2(object):
+    """
+    Use this instance on cases where you
+    want the method ``find_one`` to return
+    some values.
+    """
+    def __getitem__(self, key):
+        return self
+
+    @log_messages
+    def ensure_index(self, *args, **kwargs):
+        return self
+
+    def find_one(self,  *args, **kwargs):
+        """
+        Must discover why this method does not work
+        correctly when decorated with ``@log_messages``.
+
+        The short_ref is a little different to ensure
+        the value returned by ResourceGenerator.generate
+        was retrieved from mongodb.
+        """
+        if ENABLE_LOGGING:
+            logging.info('{0} -> args: {1}, kwargs: {2}'.format(
+                'find_one', repr(args), repr(kwargs)))
+
+        if args[0].has_key('plain'):
+            return {'short_ref': 'http://s.cl/4kgxx',}
+        elif args[0].has_key('short_ref') and args[0]['short_ref'] == 'http://s.cl/4kgxx':
+            return {'plain': 'http://www.scielo.br',}
+        else:
+            None
 
 class ViewTests(unittest.TestCase):
     def setUp(self):
@@ -49,25 +107,50 @@ class DomainTests(unittest.TestCase):
 
     def test_url_validation(self):
         request = testing.DummyRequest()
-        valid_url = Url('http://www.scielo.br/scielo.php?script=sci_serial&pid=0100-879X&lng=en&nrm=iso', request)
+        valid_url = Url(request, url='http://www.scielo.br/scielo.php?script=sci_serial&pid=0100-879X&lng=en&nrm=iso')
         self.assertTrue(isinstance(valid_url, Url))
 
         #scielo web does not return 404 http error, we need to fix scielo web.
-        notfound_url_param = Url('http://www.scielo.br/scielo.php?script=sci_serial&pid=0100-879XX&lng=en&nrm=iso', request)
+        notfound_url_param = Url(request, url='http://www.scielo.br/scielo.php?script=sci_serial&pid=0100-879XX&lng=en&nrm=iso')
         self.assertTrue(isinstance(notfound_url_param, Url))
 
         notfound_url_script = 'http://www.scielo.br/scielox.php?script=sci_serial&pid=0100-879XX&lng=en&nrm=iso'
-        self.assertRaises(ValueError, Url, notfound_url_script, request)
+        self.assertRaises(ValueError, Url, request, url=notfound_url_script)
 
     def test_shortening(self):
         request = testing.DummyRequest()
-        valid_url = Url('http://www.scielo.br', request, resource_gen=DummyResourceGen)
+        valid_url = Url(request, url='http://www.scielo.br', resource_gen=DummyResourceGen)
         self.assertEqual(valid_url.shorten(), 'http://s.cl/4kgjc')
 
     def test_resource_generation(self):
         request = testing.DummyRequest()
         request.db = DummyMongoDB()
+
         resource_gen = ResourceGenerator(request, generation_tool=DummyBase28)
         url = 'http://www.scielo.br'
         self.assertEqual(resource_gen.generate(url), 'http://s.cl/4kgjc')
 
+    def test_resource_generation_existing(self):
+        request = testing.DummyRequest()
+        request.db = DummyMongoDB_2()
+
+        resource_gen = ResourceGenerator(request, generation_tool=DummyBase28)
+        url = 'http://www.scielo.br'
+        self.assertEqual(resource_gen.generate(url), 'http://s.cl/4kgxx')
+
+    def test_resource_generation_fetch_short_refs(self):
+        request = testing.DummyRequest()
+        request.db = DummyMongoDB_2()
+
+        resource_gen = ResourceGenerator(request, generation_tool=DummyBase28)
+        short_ref = 'http://s.cl/4kgxx'
+        self.assertEqual(resource_gen.fetch(short_ref), 'http://www.scielo.br')
+
+        from .domain import NotExists
+        short_ref = 'http://s.cl/4kgxy'
+        self.assertRaises(NotExists, resource_gen.fetch, short_ref)
+
+    def test_resolving(self):
+        request = testing.DummyRequest()
+        valid_url = Url(request, short_url='http://s.cl/4kgxx', resource_gen=DummyResourceGen)
+        self.assertEqual(valid_url.resolve(), 'http://www.scielo.br')
