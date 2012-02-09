@@ -1,6 +1,7 @@
 # coding: utf-8
 import urllib2
 
+from beaker.cache import cache_region
 import base28
 import pymongo
 
@@ -40,6 +41,7 @@ class ResourceGenerator(object):
 
         raise ShortenGenerationError()
 
+    @cache_region('long_term')
     def fetch(self, short_ref):
         fetched = self._request.db['urls'].find_one({'short_ref': short_ref})
         if fetched is None:
@@ -71,7 +73,6 @@ class Url(object):
             raise AttributeError('Missing attribute url')
         short_ref = self._resource_generator.generate(self._plain_url)
         return self._request.route_url('shortened', short_ref=short_ref)
-
 
     def resolve(self):
         if self._short_url is None:

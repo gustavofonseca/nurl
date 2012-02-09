@@ -6,7 +6,7 @@ from pyramid import testing
 from .domain import Url
 from .domain import ResourceGenerator
 
-ENABLE_LOGGING = False
+ENABLE_LOGGING = True
 logging.basicConfig(filename='nurl.log', level=logging.INFO, format='%(asctime)s %(levelname)s: %(message)s')
 
 def log_messages(func):
@@ -105,6 +105,13 @@ class DomainTests(unittest.TestCase):
     def tearDown(self):
         testing.tearDown()
 
+    def required_settings(self):
+        return {'cache.regions': 'long_term',
+                'cache.type': 'memory',
+                'cache.long_term.expire': 3600,
+        }
+
+
     def test_url_validation(self):
         request = testing.DummyRequest()
         valid_url = Url(request, url='http://www.scielo.br/scielo.php?script=sci_serial&pid=0100-879X&lng=en&nrm=iso')
@@ -142,6 +149,10 @@ class DomainTests(unittest.TestCase):
     def test_resource_generation_fetch_short_refs(self):
         request = testing.DummyRequest()
         request.db = DummyMongoDB_2()
+
+        settings = self.required_settings()
+        self.config.registry.settings.update(settings)
+        self.assertTrue(self.config.registry.settings.has_key('cache.regions'))
 
         resource_gen = ResourceGenerator(request, generation_tool=DummyBase28)
         short_ref = 'http://s.cl/4kgxx'

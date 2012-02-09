@@ -2,6 +2,7 @@ import os
 
 from pyramid.config import Configurator
 from pyramid.events import NewRequest
+from pyramid_beaker import set_cache_regions_from_settings
 import pymongo
 
 APP_PATH = os.path.abspath(os.path.dirname(__file__))
@@ -9,6 +10,7 @@ APP_PATH = os.path.abspath(os.path.dirname(__file__))
 def main(global_config, **settings):
     """ This function returns a Pyramid WSGI application.
     """
+    set_cache_regions_from_settings(settings)
     config = Configurator(settings=settings)
 
     db_uri = settings['db_uri']
@@ -17,7 +19,7 @@ def main(global_config, **settings):
 
     try:
         with open(os.path.join(APP_PATH, '..' ,'domain_whitelist.txt'), 'r') as whitelist:
-            config.registry.settings['nurl.whitelist'] = set((domain for domain in whitelist))
+            config.registry.settings['nurl.whitelist'] = set((domain.strip('\n') for domain in whitelist))
     except IOError:
         config.registry.settings['nurl.check_whitelist'] = False
 
