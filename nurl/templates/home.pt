@@ -1,0 +1,26 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" xmlns:tal="http://xml.zope.org/namespaces/tal">
+<head>
+  <title>nurl :: url shortening app</title>
+  <meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/>
+  <meta name="keywords" content="nurl url-shortener python web application" />
+  <meta name="description" content="url shortener web application" />
+  <link rel="stylesheet" href="/static/bootstrap.min.css" type="text/css" media="screen" charset="utf-8" />
+</head>
+<body>
+  <div class="container">
+    <h1 tal:content="project"></h1>
+
+    <form method="GET" action="#" class="form-vertical">
+      <label for="url">URL to be shortened:</label>
+      <input type="text" name="url" class="span6"/>
+      <input type="submit" value="Shorten!" />
+    </form>
+
+    <div tal:condition="exists: short_url" class="span5 alert alert-success">
+      <h4 class="alert-heading">Yeah! Just copy the URL below!</h4>
+      <a href="${short_url}">${short_url}</a>
+    </div>
+  </div>
+</body>
+</html>
