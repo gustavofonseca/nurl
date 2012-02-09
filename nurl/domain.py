@@ -49,7 +49,13 @@ class ResourceGenerator(object):
 
 class Url(object):
     def __init__(self, request, url=None, short_url=None, resource_gen=ResourceGenerator):
+
         if url is not None:
+            check_whitelist = request.registry.settings.get('nurl.check_whitelist', False)
+            if check_whitelist:
+                url_domain = urllib2.Request(url).get_host()
+                if url_domain not in request.registry.settings['nurl.whitelist']:
+                    raise ValueError('Domain {} is not allowed'.format(url_domain))
             try:
                 u = urllib2.urlopen(url)
             except urllib2.HTTPError:

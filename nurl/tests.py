@@ -155,3 +155,19 @@ class DomainTests(unittest.TestCase):
         request = testing.DummyRequest()
         valid_url = Url(request, short_url='http://s.cl/4kgxx', resource_gen=DummyResourceGen)
         self.assertEqual(valid_url.resolve(), 'http://www.scielo.br')
+
+    def test_whitelist(self):
+        request = testing.DummyRequest()
+        request.route_url = lambda *args, **kwargs: 'http://s.cl/4kgjc'
+        class DummyRegistry(dict):
+            def __init__(self):
+                self.settings = {}
+        request.registry = DummyRegistry()
+        request.registry.settings.update({'nurl.check_whitelist': True})
+        request.registry.settings.update({'nurl.whitelist': ['www.google.com']})
+
+        self.assertRaises(ValueError, Url, request, url='http://www.scielo.br', resource_gen=DummyResourceGen)
+
+        request.registry.settings.update({'nurl.whitelist': ['www.scielo.br']})
+        valid_url = Url(request, url='http://www.scielo.br', resource_gen=DummyResourceGen)
+        self.assertEqual(valid_url.shorten(), 'http://s.cl/4kgjc')
