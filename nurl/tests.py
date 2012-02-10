@@ -92,11 +92,56 @@ class ViewTests(unittest.TestCase):
     def tearDown(self):
         testing.tearDown()
 
-    def test_my_view(self):
+    def test_home(self):
         from .views import home
+
         request = testing.DummyRequest()
         info = home(request)
         self.assertEqual(info['project'], 'nurl')
+        self.assertFalse(info.has_key('short_url'))
+
+    def test_shortening_success(self):
+        from .views import home
+
+        request = testing.DummyRequest()
+        request.params = {'url': 'http://www.scielo.br'}
+        request.route_url = lambda *args, **kwargs: 'http://s.cl/4kgjc'
+        request.db = DummyMongoDB()
+        info = home(request)
+        self.assertTrue(info.has_key('short_url'))
+
+    def test_shortening_missing(self):
+        from .views import url_shortener
+        from pyramid.httpexceptions import HTTPBadRequest
+
+        request = testing.DummyRequest()
+        self.assertRaises(HTTPBadRequest, url_shortener, request)
+
+    def test_shortening_invalid(self):
+        from .views import url_shortener
+        from pyramid.httpexceptions import HTTPBadRequest
+
+        request = testing.DummyRequest()
+        request.params = {'url': 'http://www.scielo.br/scielox.php?script=sci_serial&pid=0100-879XX&lng=en&nrm=iso'}
+        self.assertRaises(HTTPBadRequest, url_shortener, request)
+
+    def test_resolving_notfound(self):
+        from .views import short_ref_resolver
+        from pyramid.httpexceptions import HTTPNotFound
+
+        request = testing.DummyRequest()
+        request.matchdict = {'short_ref': '4kgxx'}
+        request.db = DummyMongoDB()
+        self.assertRaises(HTTPNotFound, short_ref_resolver, request)
+
+    def test_resolving_success(self):
+        from .views import short_ref_resolver
+        from pyramid.httpexceptions import HTTPMovedPermanently
+
+        request = testing.DummyRequest()
+        request.matchdict = {'short_ref': 'http://s.cl/4kgxx'}
+        request.db = DummyMongoDB_2()
+        self.assertRaises(HTTPMovedPermanently, short_ref_resolver, request)
 
 class DomainTests(unittest.TestCase):
     def setUp(self):
@@ -108,8 +153,8 @@ class DomainTests(unittest.TestCase):
     def required_settings(self):
         return {'cache.regions': 'long_term',
                 'cache.type': 'memory',
-                'cache.long_term.expire': 3600,
-        }
+                'cache.long_term.expire': '3600',
+                }
 
 
     def test_url_validation(self):
@@ -147,18 +192,19 @@ class DomainTests(unittest.TestCase):
         self.assertEqual(resource_gen.generate(url), '4kgxx')
 
     def test_resource_generation_fetch_short_refs(self):
+        from pyramid_beaker import set_cache_regions_from_settings
+        from .domain import NotExists
+
         request = testing.DummyRequest()
         request.db = DummyMongoDB_2()
 
         settings = self.required_settings()
-        self.config.registry.settings.update(settings)
-        self.assertTrue(self.config.registry.settings.has_key('cache.regions'))
+        set_cache_regions_from_settings(settings) #setting cache_regions
 
         resource_gen = ResourceGenerator(request, generation_tool=DummyBase28)
         short_ref = 'http://s.cl/4kgxx'
         self.assertEqual(resource_gen.fetch(short_ref), 'http://www.scielo.br')
 
-        from .domain import NotExists
         short_ref = 'http://s.cl/4kgxy'
         self.assertRaises(NotExists, resource_gen.fetch, short_ref)
 
