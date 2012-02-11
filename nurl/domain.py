@@ -48,6 +48,7 @@ class ResourceGenerator(object):
         self._generation_tool = generation_tool
         self._digit_count = int(self._request.registry.settings.get('nurl.digit_count', 5))
 
+    @cache_region('long_term', 'short_url_generation')
     def generate(self, url):
         #generating index
         self._request.db['urls'].ensure_index('short_ref', unique=True)
@@ -71,7 +72,7 @@ class ResourceGenerator(object):
 
         raise ShortenGenerationError()
 
-    @cache_region('long_term')
+    @cache_region('long_term', 'url_fetching')
     def fetch(self, short_ref):
         fetched = self._request.db['urls'].find_one({'short_ref': short_ref})
         if fetched is None:
