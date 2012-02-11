@@ -16,7 +16,7 @@ Quick Installation
 1. Download the files from http://github.com/gustavofonseca/nurl
 2. Run ``python setup.py develop``
 3. Edit ``development.ini`` to enter MongoDB configs
-2. Run ``pserve development.ini``
+4. Run ``pserve development.ini``
 
 This is a typical Pyramid app installation. For more details, take a look at the
 'Pyramid docs'_.
