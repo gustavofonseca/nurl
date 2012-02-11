@@ -31,6 +31,7 @@
 import urllib2
 
 from beaker.cache import cache_region
+from beaker.cache import region_invalidate
 import base28
 import pymongo
 
@@ -48,7 +49,7 @@ class ResourceGenerator(object):
         self._generation_tool = generation_tool
         self._digit_count = int(self._request.registry.settings.get('nurl.digit_count', 5))
 
-    @cache_region('long_term', 'short_url_generation')
+    @cache_region('seconds')
     def generate(self, url):
         #generating index
         self._request.db['urls'].ensure_index('short_ref', unique=True)
@@ -68,11 +69,12 @@ class ResourceGenerator(object):
                 attempts += 1
                 continue
             else:
+                region_invalidate(self.fetch, None, url_data['short_ref'])
                 return url_data['short_ref']
 
         raise ShortenGenerationError()
 
-    @cache_region('long_term', 'url_fetching')
+    @cache_region('long_term')
     def fetch(self, short_ref):
         fetched = self._request.db['urls'].find_one({'short_ref': short_ref})
         if fetched is None:

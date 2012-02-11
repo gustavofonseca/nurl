@@ -151,9 +151,9 @@ class DomainTests(unittest.TestCase):
         testing.tearDown()
 
     def required_settings(self):
-        return {'cache.regions': 'long_term',
+        return {'cache.regions': 'long_term, seconds',
                 'cache.type': 'memory',
-                'cache.long_term.expire': '3600',
+                'cache.long_term.expire': '5',
                 }
 
 
@@ -176,19 +176,30 @@ class DomainTests(unittest.TestCase):
         self.assertEqual(valid_url.shorten(), 'http://s.cl/4kgjc')
 
     def test_resource_generation(self):
+        from pyramid_beaker import set_cache_regions_from_settings
         request = testing.DummyRequest()
         request.db = DummyMongoDB()
+
+        settings = self.required_settings()
+        set_cache_regions_from_settings(settings) #setting cache_regions
 
         resource_gen = ResourceGenerator(request, generation_tool=DummyBase28)
         url = 'http://www.scielo.br'
         self.assertEqual(resource_gen.generate(url), '4kgjc')
 
     def test_resource_generation_existing(self):
+        from pyramid_beaker import set_cache_regions_from_settings
+        from beaker.cache import region_invalidate
         request = testing.DummyRequest()
         request.db = DummyMongoDB_2()
 
+        settings = self.required_settings()
+        set_cache_regions_from_settings(settings) #setting cache_regions
+
         resource_gen = ResourceGenerator(request, generation_tool=DummyBase28)
         url = 'http://www.scielo.br'
+
+        region_invalidate(resource_gen.generate, None, url)#invalidate cache
         self.assertEqual(resource_gen.generate(url), '4kgxx')
 
     def test_resource_generation_fetch_short_refs(self):
