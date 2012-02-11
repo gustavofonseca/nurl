@@ -166,7 +166,7 @@ class DomainTests(unittest.TestCase):
         notfound_url_param = Url(request, url='http://www.scielo.br/scielo.php?script=sci_serial&pid=0100-879XX&lng=en&nrm=iso')
         self.assertTrue(isinstance(notfound_url_param, Url))
 
-        notfound_url_script = 'http://www.scielo.br/scielox.php?script=sci_serial&pid=0100-879XX&lng=en&nrm=iso'
+        notfound_url_script = r'http://www.scielo.br/scielox.php?script=sci_serial&pid=0100-879XX&lng=en&nrm=iso'
         self.assertRaises(ValueError, Url, request, url=notfound_url_script)
 
     def test_shortening(self):
@@ -221,10 +221,23 @@ class DomainTests(unittest.TestCase):
                 self.settings = {}
         request.registry = DummyRegistry()
         request.registry.settings.update({'nurl.check_whitelist': True})
-        request.registry.settings.update({'nurl.whitelist': ['www.google.com']})
+        request.registry.settings.update({'nurl.whitelist': ['google.com']})
 
         self.assertRaises(ValueError, Url, request, url='http://www.scielo.br', resource_gen=DummyResourceGen)
 
-        request.registry.settings.update({'nurl.whitelist': ['www.scielo.br']})
+        request.registry.settings.update({'nurl.whitelist': ['scielo.br']})
         valid_url = Url(request, url='http://www.scielo.br', resource_gen=DummyResourceGen)
+        self.assertEqual(valid_url.shorten(), 'http://s.cl/4kgjc')
+
+    def test_whitelist_subdomain(self):
+        request = testing.DummyRequest()
+        request.route_url = lambda *args, **kwargs: 'http://s.cl/4kgjc'
+        class DummyRegistry(dict):
+            def __init__(self):
+                self.settings = {}
+        request.registry = DummyRegistry()
+        request.registry.settings.update({'nurl.check_whitelist': True})
+        request.registry.settings.update({'nurl.whitelist': ['scielo.br']})
+        valid_url_subdomain = r'http://scielo-log.scielo.br/scielolog/scielolog.php?script=sci_journalstat&lng=en&nrm=iso&app=scielo&server=www.scielo.br'
+        valid_url = Url(request, url=valid_url_subdomain, resource_gen=DummyResourceGen)
         self.assertEqual(valid_url.shorten(), 'http://s.cl/4kgjc')

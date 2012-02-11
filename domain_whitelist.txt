@@ -1,2 +1,2 @@
-www.scielo.br
-www.scielo.org
+scielo.br
+scielo.org

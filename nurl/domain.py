@@ -46,6 +46,7 @@ class ResourceGenerator(object):
     def __init__(self, request, generation_tool=base28):
         self._request = request
         self._generation_tool = generation_tool
+        self._digit_count = int(self._request.registry.settings.get('nurl.digit_count', 5))
 
     def generate(self, url):
         #generating index
@@ -58,7 +59,7 @@ class ResourceGenerator(object):
 
         attempts = 0
         while attempts < 10:
-            weak_short_reference = self._generation_tool.genbase(5)
+            weak_short_reference = self._generation_tool.genbase(self._digit_count)
             url_data = {'plain': url, 'short_ref': weak_short_reference}
             try:
                 self._request.db['urls'].insert(url_data, safe=True)
@@ -84,7 +85,7 @@ class Url(object):
         if url is not None:
             check_whitelist = request.registry.settings.get('nurl.check_whitelist', False)
             if check_whitelist:
-                url_domain = urllib2.Request(url).get_host()
+                url_domain = '.'.join(urllib2.Request(url).get_host().split('.')[-2:])
                 if url_domain not in request.registry.settings['nurl.whitelist']:
                     raise ValueError('Domain {} is not allowed'.format(url_domain))
             try:
