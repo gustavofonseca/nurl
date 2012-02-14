@@ -4,8 +4,10 @@ from pyramid.config import Configurator
 from pyramid.events import NewRequest
 from pyramid_beaker import set_cache_regions_from_settings
 import pymongo
+import newrelic.agent
 
 APP_PATH = os.path.abspath(os.path.dirname(__file__))
+
 
 def main(global_config, **settings):
     """ This function returns a Pyramid WSGI application.
@@ -13,7 +15,7 @@ def main(global_config, **settings):
     set_cache_regions_from_settings(settings)
     config = Configurator(settings=settings)
 
-    db_uri = settings['db_uri']
+    db_uri = settings['mongodb.db_uri']
     conn = pymongo.Connection(db_uri)
     config.registry.settings['db_conn'] = conn
 
@@ -33,9 +35,19 @@ def main(global_config, **settings):
     config.add_route('shortener_v01', '/api/v0.1/shorten')
 
     config.scan()
-    return config.make_wsgi_app()
+    application = config.make_wsgi_app()
+
+    try:
+        if settings.get('newrelic.enable', 'False').lower() == 'true':
+            newrelic.agent.initialize(os.path.join(APP_PATH, '..', 'newrelic.ini'), settings['newrelic.environment'])
+            return newrelic.agent.wsgi_application()(application)
+        else:
+            return application
+    except IOError:
+        config.registry.settings['newrelic.enable'] = False
+        return application
 
 def add_mongo_db(event):
     settings = event.request.registry.settings
-    db = settings['db_conn'][settings['db_name']]
+    db = settings['db_conn'][settings['mongodb.db_name']]
     event.request.db = db
