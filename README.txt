@@ -17,3 +17,6 @@ Quick Installation
 
 This is a typical Pyramid app installation. For more details, take a look at:
 http://docs.pylonsproject.org/projects/pyramid/en/1.3-branch/
+
+
+.. image:: https://secure.travis-ci.org/gustavofonseca/nurl.png?branch=master
