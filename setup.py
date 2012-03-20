@@ -12,6 +12,7 @@ requires = [
     'waitress',
     'pymongo',
     'pyramid_beaker',
+    'newrelic',
     ]
 
 setup(name='nurl',
