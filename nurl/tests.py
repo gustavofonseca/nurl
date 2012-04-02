@@ -6,7 +6,7 @@ from pyramid import testing
 from .domain import Url
 from .domain import ResourceGenerator
 
-ENABLE_LOGGING = True
+ENABLE_LOGGING = False
 logging.basicConfig(filename='nurl.log', level=logging.INFO, format='%(asctime)s %(levelname)s: %(message)s')
 
 def log_messages(func):
@@ -175,6 +175,12 @@ class DomainTests(unittest.TestCase):
         valid_url = Url(request, url='http://www.scielo.br', resource_gen=DummyResourceGen)
         self.assertEqual(valid_url.shorten(), 'http://s.cl/4kgjc')
 
+    def test_shortening_schemaless_url(self):
+        request = testing.DummyRequest()
+        request.route_url = lambda *args, **kwargs: 'http://s.cl/4kgjc'
+        valid_url = Url(request, url='www.scielo.br', resource_gen=DummyResourceGen)
+        self.assertEqual(valid_url.shorten(), 'http://s.cl/4kgjc')
+
     def test_resource_generation(self):
         from pyramid_beaker import set_cache_regions_from_settings
         request = testing.DummyRequest()
@@ -252,3 +258,4 @@ class DomainTests(unittest.TestCase):
         valid_url_subdomain = r'http://scielo-log.scielo.br/scielolog/scielolog.php?script=sci_journalstat&lng=en&nrm=iso&app=scielo&server=www.scielo.br'
         valid_url = Url(request, url=valid_url_subdomain, resource_gen=DummyResourceGen)
         self.assertEqual(valid_url.shorten(), 'http://s.cl/4kgjc')
+

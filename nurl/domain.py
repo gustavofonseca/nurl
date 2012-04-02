@@ -29,6 +29,7 @@
 # OF SUCH DAMAGE.
 
 import urllib2
+import urlparse
 
 from beaker.cache import cache_region
 from beaker.cache import region_invalidate
@@ -86,9 +87,13 @@ class Url(object):
     def __init__(self, request, url=None, short_url=None, resource_gen=ResourceGenerator):
 
         if url is not None:
+            parsed_url = urlparse.urlparse(url)
+            if not parsed_url.scheme:
+                url = 'http://' + url
+
             check_whitelist = request.registry.settings.get('nurl.check_whitelist', False)
             if check_whitelist:
-                url_domain = '.'.join(urllib2.Request(url).get_host().split('.')[-2:])
+                url_domain = '.'.join(parsed_url.hostname.split('.')[-2:])
                 if url_domain not in request.registry.settings['nurl.whitelist']:
                     raise ValueError('Domain {} is not allowed'.format(url_domain))
             try:
