@@ -84,27 +84,48 @@ class ResourceGenerator(object):
         return fetched['plain']
 
 class Url(object):
-    def __init__(self, request, url=None, short_url=None, resource_gen=ResourceGenerator):
+    def __init__(self, request, url=None, short_url=None, resource_gen=ResourceGenerator,
+        url_lib=urllib2):
+
+        self.url_lib = url_lib
 
         if url is not None:
             parsed_url = urlparse.urlparse(url)
             if not parsed_url.scheme:
                 url = 'http://' + url
+                parsed_url = urlparse.urlparse(url)
 
             check_whitelist = request.registry.settings.get('nurl.check_whitelist', False)
             if check_whitelist:
                 url_domain = '.'.join(parsed_url.hostname.split('.')[-2:])
                 if url_domain not in request.registry.settings['nurl.whitelist']:
                     raise ValueError('Domain {} is not allowed'.format(url_domain))
-            try:
-                u = urllib2.urlopen(url)
-            except urllib2.HTTPError:
-                raise ValueError('Invalid Url')
+
+            if not self._url_is_valid(url):
+                if 'www' not in url: #try adding www
+                    split_url = url.split('//')
+                    split_url[1] = 'www.' + split_url[1]
+                    refactored_url = '//'.join(split_url)
+
+                    if not self._url_is_valid(refactored_url):
+                        raise ValueError('Invalid Url')
+                    else:
+                        url = refactored_url
+                else:
+                    raise ValueError('Invalid Url')
 
         self._plain_url = url
         self._short_url = short_url
         self._request = request
         self._resource_generator = resource_gen(self._request)
+
+    def _url_is_valid(self, url):
+        try:
+            u = self.url_lib.urlopen(url)
+        except (self.url_lib.HTTPError, self.url_lib.URLError):
+            return False
+        else:
+            return True
 
     def shorten(self):
         if self._plain_url is None:

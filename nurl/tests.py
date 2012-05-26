@@ -85,6 +85,16 @@ class DummyMongoDB_2(object):
         else:
             None
 
+class DummyUrllib(object):
+    def urlopen(self, url):
+        return None
+
+    class HTTPError(Exception):
+        pass
+
+    class URLError(Exception):
+        pass
+
 class ViewTests(unittest.TestCase):
     def setUp(self):
         self.config = testing.setUp()
@@ -259,3 +269,34 @@ class DomainTests(unittest.TestCase):
         valid_url = Url(request, url=valid_url_subdomain, resource_gen=DummyResourceGen)
         self.assertEqual(valid_url.shorten(), 'http://s.cl/4kgjc')
 
+    def test_missing_www(self):
+        """
+        When it is not possible to resolve the host, Nurl will check if there is the
+        ``www`` subdomain in the url before raising a ValueError. If there isn't, it
+        will be added and try again.
+        """
+        request = testing.DummyRequest()
+        request.route_url = lambda *args, **kwargs: 'http://s.cl/4kgjc'
+        class DummyRegistry(dict):
+            def __init__(self):
+                self.settings = {}
+        request.registry = DummyRegistry()
+        request.registry.settings.update({'nurl.check_whitelist': False})
+        request.registry.settings.update({'nurl.whitelist': ['scielo.br']})
+        valid_url = r'http://scielo.br'
+        valid_url = Url(request, url=valid_url, resource_gen=DummyResourceGen, url_lib=DummyUrllib())
+        self.assertEqual(valid_url.shorten(), 'http://s.cl/4kgjc')
+
+    def test_url_is_valid(self):
+        request = testing.DummyRequest()
+
+        valid_url = r'http://scielo.br'
+        url_obj = Url(request, url=valid_url, resource_gen=DummyResourceGen, url_lib=DummyUrllib())
+        self.assertEqual(Url._url_is_valid(url_obj, valid_url), True)
+
+        def urlopen(url):
+            raise DummyUrllib.HTTPError()
+
+        url_obj = Url(request, url=valid_url, resource_gen=DummyResourceGen, url_lib=DummyUrllib())
+        url_obj.url_lib.urlopen = urlopen
+        self.assertEqual(Url._url_is_valid(url_obj, valid_url), False)
