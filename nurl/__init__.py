@@ -3,6 +3,7 @@ import os
 from pyramid.config import Configurator
 from pyramid.events import NewRequest
 from pyramid_beaker import set_cache_regions_from_settings
+from pyramid.renderers import JSONP
 import pymongo
 import newrelic.agent
 
@@ -26,6 +27,8 @@ def main(global_config, **settings):
         config.registry.settings['nurl.check_whitelist'] = False
 
     config.add_subscriber(add_mongo_db, NewRequest)
+
+    config.add_renderer('jsonp', JSONP(param_name='callback'))
 
     config.add_static_view('static', 'static', cache_max_age=3600)
     config.add_route('home', '/')

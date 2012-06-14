@@ -18,7 +18,7 @@ def home(request):
 
     return response_dict
 
-@view_config(route_name='shortener_v01')
+@view_config(route_name='shortener_v01', renderer='jsonp')
 def url_shortener(request):
 
     incoming_url = request.params.get('url')
@@ -35,7 +35,7 @@ def url_shortener(request):
     except ShortenGenerationError:
         raise httpexceptions.HTTPInternalServerError()
 
-    return Response(short_url)
+    return short_url
 
 @view_config(route_name='shortened')
 def short_ref_resolver(request):
