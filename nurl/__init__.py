@@ -4,6 +4,7 @@ from pyramid.config import Configurator
 from pyramid.events import NewRequest
 from pyramid_beaker import set_cache_regions_from_settings
 from pyramid.renderers import JSONP
+from pyramid.settings import asbool
 import pymongo
 import newrelic.agent
 
@@ -40,9 +41,11 @@ def main(global_config, **settings):
     config.scan()
     application = config.make_wsgi_app()
 
+    #newrelic agent
     try:
-        if settings.get('newrelic.enable', 'False').lower() == 'true':
-            newrelic.agent.initialize(os.path.join(APP_PATH, '..', 'newrelic.ini'), settings['newrelic.environment'])
+        if asbool(settings.get('newrelic.enable', False)):
+            newrelic.agent.initialize(os.path.join(APP_PATH, '..', 'newrelic.ini'),
+                settings['newrelic.environment'])
             return newrelic.agent.wsgi_application()(application)
         else:
             return application
