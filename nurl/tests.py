@@ -96,6 +96,9 @@ class DummyUrllib(object):
         pass
 
 class ViewTests(unittest.TestCase):
+    """
+    Tests the HTTP API
+    """
     def setUp(self):
         self.config = testing.setUp()
 
@@ -119,6 +122,16 @@ class ViewTests(unittest.TestCase):
         request.db = DummyMongoDB()
         info = home(request)
         self.assertTrue(info.has_key('short_url'))
+
+    def test_shortening_success_jsonp(self):
+        from .views import url_shortener
+
+        request = testing.DummyRequest()
+        request.params = {'url': 'http://www.scielo.br', 'callback': '?'}
+        request.route_url = lambda *args, **kwargs: 'http://s.cl/4kgjc'
+        request.db = DummyMongoDB()
+        info = url_shortener(request)
+        self.assertTrue(isinstance(info, str))
 
     def test_shortening_missing(self):
         from .views import url_shortener
@@ -154,6 +167,10 @@ class ViewTests(unittest.TestCase):
         self.assertRaises(HTTPMovedPermanently, short_ref_resolver, request)
 
 class DomainTests(unittest.TestCase):
+    """
+    Tests the domain logic
+    """
+
     def setUp(self):
         self.config = testing.setUp()
 

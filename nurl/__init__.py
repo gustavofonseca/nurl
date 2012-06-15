@@ -34,8 +34,8 @@ def main(global_config, **settings):
     config.add_route('home', '/')
     config.add_route('shortened', '/{short_ref}')
 
-    #rest api version 0.1
-    config.add_route('shortener_v01', '/api/v0.1/shorten')
+    #rest api version 1
+    config.add_route('shortener_v1', '/api/v1/shorten')
 
     config.scan()
     application = config.make_wsgi_app()
