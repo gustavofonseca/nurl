@@ -110,10 +110,9 @@ class ViewTests(unittest.TestCase):
 
         request = testing.DummyRequest()
         info = home(request)
-        self.assertEqual(info['project'], 'nurl')
         self.assertFalse(info.has_key('short_url'))
 
-    def test_shortening_success(self):
+    def test_home_shortening_success(self):
         from .views import home
 
         request = testing.DummyRequest()
@@ -123,7 +122,16 @@ class ViewTests(unittest.TestCase):
         info = home(request)
         self.assertTrue(info.has_key('short_url'))
 
-    def test_shortening_success_jsonp(self):
+    def test_home_shortening_missing(self):
+        from .views import home
+        from pyramid.httpexceptions import HTTPFound
+
+        request = testing.DummyRequest()
+        request.params = {'url': u''}
+        request.route_url = lambda *args, **kwargs: 'http://localhost'
+        self.assertRaises(HTTPFound, home, request)
+
+    def test_shortening_jsonp(self):
         from .views import url_shortener
 
         request = testing.DummyRequest()
@@ -148,6 +156,14 @@ class ViewTests(unittest.TestCase):
         request.params = {'url': 'http://www.scielo.br/scielox.php?script=sci_serial&pid=0100-879XX&lng=en&nrm=iso'}
         self.assertRaises(HTTPBadRequest, url_shortener, request)
 
+    def test_shortening_invalid_empty_string(self):
+        from .views import url_shortener
+        from pyramid.httpexceptions import HTTPBadRequest
+
+        request = testing.DummyRequest()
+        request.params = {'url': u''}
+        self.assertRaises(HTTPBadRequest, url_shortener, request)
+
     def test_resolving_notfound(self):
         from .views import short_ref_resolver
         from pyramid.httpexceptions import HTTPNotFound
@@ -165,6 +181,7 @@ class ViewTests(unittest.TestCase):
         request.matchdict = {'short_ref': 'http://s.cl/4kgxx'}
         request.db = DummyMongoDB_2()
         self.assertRaises(HTTPMovedPermanently, short_ref_resolver, request)
+
 
 class DomainTests(unittest.TestCase):
     """
