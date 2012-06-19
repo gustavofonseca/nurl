@@ -22,8 +22,10 @@ def main(global_config, **settings):
     config.registry.settings['db_conn'] = conn
 
     try:
-        with open(os.path.join(APP_PATH, '..' ,'domain_whitelist.txt'), 'r') as whitelist:
-            config.registry.settings['nurl.whitelist'] = set((domain.strip('\n') for domain in whitelist))
+        if asbool(settings.get('nurl.check_whitelist', False)):
+            with open(os.path.join(APP_PATH, '..' ,'whitelist.txt')) as whitelist:
+                config.registry.settings['nurl.whitelist'] = get_whitelist(whitelist,
+                    asbool(settings.get('nurl.check_whitelist_auto_www', False)))
     except IOError:
         config.registry.settings['nurl.check_whitelist'] = False
 
@@ -57,3 +59,18 @@ def add_mongo_db(event):
     settings = event.request.registry.settings
     db = settings['db_conn'][settings['mongodb.db_name']]
     event.request.db = db
+
+def get_whitelist(whitelist, auto_www=False):
+    if auto_www:
+        hostnames = []
+        for host in whitelist:
+            hostnames.append(host.strip('\n'))
+            if not host.startswith('www'):
+                hostnames.append('www.' + host.strip('\n'))
+        return set(hostnames)
+    else:
+        return set((host.strip('\n') for host in whitelist))
+
+
+
+

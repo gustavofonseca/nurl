@@ -286,7 +286,7 @@ class DomainTests(unittest.TestCase):
 
         self.assertRaises(ValueError, Url, request, url='http://www.scielo.br', resource_gen=DummyResourceGen)
 
-        request.registry.settings.update({'nurl.whitelist': ['scielo.br']})
+        request.registry.settings.update({'nurl.whitelist': ['www.scielo.br']})
         valid_url = Url(request, url='http://www.scielo.br', resource_gen=DummyResourceGen)
         self.assertEqual(valid_url.shorten(), 'http://s.cl/4kgjc')
 
@@ -298,30 +298,16 @@ class DomainTests(unittest.TestCase):
                 self.settings = {}
         request.registry = DummyRegistry()
         request.registry.settings.update({'nurl.check_whitelist': True})
-        request.registry.settings.update({'nurl.whitelist': ['scielo.br']})
+        request.registry.settings.update({'nurl.whitelist': ['www.scielo.br']})
         valid_url_subdomain = r'http://scielo-log.scielo.br/scielolog/scielolog.php?script=sci_journalstat&lng=en&nrm=iso&app=scielo&server=www.scielo.br'
+        self.assertRaises(ValueError, Url, request, url=valid_url_subdomain,
+            resource_gen=DummyResourceGen)
+
+        request.registry.settings.update({'nurl.whitelist': ['scielo-log.scielo.br']})
         valid_url = Url(request, url=valid_url_subdomain, resource_gen=DummyResourceGen)
         self.assertEqual(valid_url.shorten(), 'http://s.cl/4kgjc')
 
-    def test_missing_www(self):
-        """
-        When it is not possible to resolve the host, Nurl will check if there is the
-        ``www`` subdomain in the url before raising a ValueError. If there isn't, it
-        will be added and try again.
-        """
-        request = testing.DummyRequest()
-        request.route_url = lambda *args, **kwargs: 'http://s.cl/4kgjc'
-        class DummyRegistry(dict):
-            def __init__(self):
-                self.settings = {}
-        request.registry = DummyRegistry()
-        request.registry.settings.update({'nurl.check_whitelist': False})
-        request.registry.settings.update({'nurl.whitelist': ['scielo.br']})
-        valid_url = r'http://scielo.br'
-        valid_url = Url(request, url=valid_url, resource_gen=DummyResourceGen, url_lib=DummyUrllib())
-        self.assertEqual(valid_url.shorten(), 'http://s.cl/4kgjc')
-
-    def test_url_is_valid(self):
+    def test_url_validation(self):
         request = testing.DummyRequest()
 
         valid_url = r'http://scielo.br'
@@ -334,3 +320,46 @@ class DomainTests(unittest.TestCase):
         url_obj = Url(request, url=valid_url, resource_gen=DummyResourceGen, url_lib=DummyUrllib())
         url_obj.url_lib.urlopen = urlopen
         self.assertEqual(Url._url_is_valid(url_obj, valid_url), False)
+
+    def test_hostname_validation(self):
+        request = testing.DummyRequest()
+        request.registry.settings.update({'nurl.check_whitelist': True})
+        request.registry.settings.update({'nurl.whitelist': ['www.scielo.org']})
+
+        hostname = 'www.scielo.br'
+        url_obj = Url(request, resource_gen=DummyResourceGen, url_lib=DummyUrllib())
+        self.assertFalse(Url._hostname_is_allowed(url_obj, hostname))
+
+        del(hostname)
+        del(url_obj)
+        del(request.registry.settings['nurl.whitelist'])
+
+        request.registry.settings.update({'nurl.whitelist': ['www.scielo.br']})
+        url_obj = Url(request, resource_gen=DummyResourceGen, url_lib=DummyUrllib())
+        hostname = 'www.scielo.br'
+        self.assertTrue(Url._hostname_is_allowed(url_obj, hostname))
+
+        del(hostname)
+        del(url_obj)
+        del(request.registry.settings['nurl.check_whitelist'])
+        del(request.registry.settings['nurl.whitelist'])
+
+        request.registry.settings.update({'nurl.check_whitelist': False})
+
+        hostname = 'www.scielo.za'
+        url_obj = Url(request, resource_gen=DummyResourceGen, url_lib=DummyUrllib())
+        self.assertTrue(Url._hostname_is_allowed(url_obj, hostname))
+
+    def test_get_whitelist(self):
+        import nurl
+
+        hostnames = ['scielo.br', 'scielo.org', 'scielo.za']
+        whitelist = nurl.get_whitelist(hostnames)
+        for hostname in hostnames:
+            self.assertTrue(hostname in whitelist)
+            self.assertTrue('www.'+hostname not in whitelist)
+
+        whitelist = nurl.get_whitelist(hostnames, auto_www=True)
+        for hostname in hostnames:
+            self.assertTrue(hostname in whitelist)
+            self.assertTrue('www.'+hostname in whitelist)

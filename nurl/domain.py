@@ -31,6 +31,7 @@
 import urllib2
 import urlparse
 
+from pyramid.settings import asbool
 from beaker.cache import cache_region
 from beaker.cache import region_invalidate
 import base28
@@ -86,7 +87,7 @@ class ResourceGenerator(object):
 class Url(object):
     def __init__(self, request, url=None, short_url=None, resource_gen=ResourceGenerator,
         url_lib=urllib2):
-
+        self._request = request
         self.url_lib = url_lib
 
         if url is not None:
@@ -95,29 +96,24 @@ class Url(object):
                 url = 'http://' + url
                 parsed_url = urlparse.urlparse(url)
 
-            check_whitelist = request.registry.settings.get('nurl.check_whitelist', False)
-            if check_whitelist:
-                url_domain = '.'.join(parsed_url.hostname.split('.')[-2:])
-                if url_domain not in request.registry.settings['nurl.whitelist']:
-                    raise ValueError('Domain {} is not allowed'.format(url_domain))
+            if not self._hostname_is_allowed(parsed_url.hostname):
+                raise ValueError('Domain {} is not allowed'.format(parsed_url.hostname))
 
             if not self._url_is_valid(url):
-                if 'www' not in url: #try adding www
-                    split_url = url.split('//')
-                    split_url[1] = 'www.' + split_url[1]
-                    refactored_url = '//'.join(split_url)
-
-                    if not self._url_is_valid(refactored_url):
-                        raise ValueError('Invalid Url')
-                    else:
-                        url = refactored_url
-                else:
-                    raise ValueError('Invalid Url')
+                raise ValueError('Invalid Url {}'.format(url))
 
         self._plain_url = url
         self._short_url = short_url
-        self._request = request
         self._resource_generator = resource_gen(self._request)
+
+    def _hostname_is_allowed(self, hostname):
+        check_whitelist = asbool(self._request.registry.settings.get(
+            'nurl.check_whitelist', False))
+        if check_whitelist:
+            if hostname not in self._request.registry.settings['nurl.whitelist']:
+                return False
+
+        return True
 
     def _url_is_valid(self, url):
         try:
