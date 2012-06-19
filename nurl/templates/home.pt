@@ -21,6 +21,12 @@
       <h4 class="alert-heading">Yeah! Just copy the URL below!</h4>
       <a href="${short_url}">${short_url}</a>
     </div>
+
+    <div tal:condition="exists: errors" class="span5 alert alert-error" tal:repeat="error errors">
+      <h4 class="alert-heading">${error[0]}</h4>
+      ${error[1]}
+    </div>
+
   </div>
 </body>
 </html>

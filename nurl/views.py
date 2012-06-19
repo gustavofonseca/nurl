@@ -16,9 +16,11 @@ def home(request):
         try:
             short_url = url_shortener(request)
         except httpexceptions.HTTPBadRequest:
-            raise httpexceptions.HTTPFound(request.route_url('home'))
-
-        response_dict.update({'short_url': short_url})
+            errors = response_dict.setdefault('errors', [])
+            response_dict['errors'].append(('Invalid URL',
+                "Maybe this hostname is not allowed or you've typed something wrong."))
+        else:
+            response_dict.update({'short_url': short_url})
 
     return response_dict
 

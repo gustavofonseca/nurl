@@ -129,7 +129,8 @@ class ViewTests(unittest.TestCase):
         request = testing.DummyRequest()
         request.params = {'url': u''}
         request.route_url = lambda *args, **kwargs: 'http://localhost'
-        self.assertRaises(HTTPFound, home, request)
+        response_dict = home(request)
+        self.assertTrue(response_dict.has_key('errors'))
 
     def test_shortening_jsonp(self):
         from .views import url_shortener
