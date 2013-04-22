@@ -20,10 +20,11 @@ def main(global_config, **settings):
     db_uri = settings['mongodb.db_uri']
     conn = pymongo.Connection(db_uri)
     config.registry.settings['db_conn'] = conn
+    ensure_indexes(get_mongo_db(config.registry.settings))
 
     try:
         if asbool(settings.get('nurl.check_whitelist', False)):
-            with open(os.path.join(APP_PATH, '..' ,'whitelist.txt')) as whitelist:
+            with open(os.path.join(APP_PATH, '..', 'whitelist.txt')) as whitelist:
                 config.registry.settings['nurl.whitelist'] = get_whitelist(whitelist,
                     asbool(settings.get('nurl.check_whitelist_auto_www', False)))
     except IOError:
@@ -55,9 +56,13 @@ def main(global_config, **settings):
         config.registry.settings['newrelic.enable'] = False
         return application
 
+def get_mongo_db(settings):
+    db = settings['db_conn'][settings['mongodb.db_name']]
+    return db
+
 def add_mongo_db(event):
     settings = event.request.registry.settings
-    db = settings['db_conn'][settings['mongodb.db_name']]
+    db = get_mongo_db(settings)
     event.request.db = db
 
 def get_whitelist(whitelist, auto_www=False):
@@ -71,6 +76,7 @@ def get_whitelist(whitelist, auto_www=False):
     else:
         return set((host.strip('\n') for host in whitelist))
 
-
-
+def ensure_indexes(db):
+    db['urls'].ensure_index('short_ref', unique=True)
+    db['urls'].ensure_index('plain', unique=True)
 

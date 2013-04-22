@@ -53,10 +53,6 @@ class ResourceGenerator(object):
 
     @cache_region('seconds')
     def generate(self, url):
-        #generating index
-        self._request.db['urls'].ensure_index('short_ref', unique=True)
-        self._request.db['urls'].ensure_index('plain', unique=True)
-
         pre_fetch = self._request.db['urls'].find_one({'plain': url})
         if pre_fetch is not None:
             return pre_fetch['short_ref']
@@ -84,17 +80,19 @@ class ResourceGenerator(object):
 
         return fetched['plain']
 
+
 class Url(object):
-    def __init__(self, request, url=None, short_url=None, resource_gen=ResourceGenerator,
-        url_lib=urllib2):
+    def __init__(self,
+                 request,
+                 url=None,
+                 short_url=None,
+                 resource_gen=ResourceGenerator,
+                 url_lib=urllib2):
         self._request = request
         self.url_lib = url_lib
 
         if url is not None:
-            parsed_url = urlparse.urlparse(url)
-            if not parsed_url.scheme:
-                url = 'http://' + url
-                parsed_url = urlparse.urlparse(url)
+            parsed_url = self._parse_url(url)
 
             if not self._hostname_is_allowed(parsed_url.hostname):
                 raise ValueError('Domain {} is not allowed'.format(parsed_url.hostname))
@@ -105,6 +103,18 @@ class Url(object):
         self._plain_url = url
         self._short_url = short_url
         self._resource_generator = resource_gen(self._request)
+
+    def _parse_url(self, url, scheme='http://'):
+        """
+        Returns a parsed URL just as ``urlparse.urlparse`` would, but
+        adds the default ``scheme`` if missing.
+        """
+        parsed_url = urlparse.urlparse(url)
+        if not parsed_url.scheme:
+            url = scheme + url
+            parsed_url = urlparse.urlparse(url)
+
+        return parsed_url
 
     def _hostname_is_allowed(self, hostname):
         check_whitelist = asbool(self._request.registry.settings.get(
